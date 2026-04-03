@@ -1,0 +1,50 @@
+{
+    "camera_index": 0,
+    "frame_width": 640,
+    "frame_height": 480,
+    "min_contour_area": 500,
+    "blur_kernel_size": 5,
+    "tracker_max_disappeared": 30,
+    "tracker_max_distance": 80,
+    "trajectory_max_length": 50,
+    "colors": {
+        "red": {
+            "lower": [0, 120, 70],
+            "upper": [10, 255, 255],
+            "lower2": [170, 120, 70],
+            "upper2": [180, 255, 255],
+            "display_color": [0, 0, 255],
+            "dual_range": true
+        },
+        "blue": {
+            "lower": [100, 150, 50],
+            "upper": [130, 255, 255],
+            "display_color": [255, 0, 0],
+            "dual_range": false
+        },
+        "green": {
+            "lower": [35, 100, 50],
+            "upper": [85, 255, 255],
+            "display_color": [0, 200, 0],
+            "dual_range": false
+        },
+        "yellow": {
+            "lower": [20, 100, 100],
+            "upper": [35, 255, 255],
+            "display_color": [0, 215, 255],
+            "dual_range": false
+        },
+        "orange": {
+            "lower": [10, 120, 100],
+            "upper": [20, 255, 255],
+            "display_color": [0, 140, 255],
+            "dual_range": false
+        },
+        "purple": {
+            "lower": [130, 60, 50],
+            "upper": [160, 255, 255],
+            "display_color": [200, 0, 150],
+            "dual_range": false
+        }
+    }
+}
