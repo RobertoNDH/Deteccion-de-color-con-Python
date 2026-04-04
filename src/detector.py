@@ -1,6 +1,7 @@
+from typing import NamedTuple, Optional
+
 import cv2
 import numpy as np
-from typing import NamedTuple, Optional
 
 
 class Detection(NamedTuple):

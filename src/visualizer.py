@@ -1,8 +1,9 @@
 import time
+
 import cv2
 import numpy as np
-from src.tracker import TrackedObject
 
+from src.tracker import TrackedObject
 
 _FONT       = cv2.FONT_HERSHEY_DUPLEX
 _FONT_SMALL = cv2.FONT_HERSHEY_SIMPLEX
@@ -112,3 +113,24 @@ class Visualizer:
             y = pad + (i + 1) * line_h - 4
             cv2.putText(frame, line, (pad, y),
                         _FONT_SMALL, 0.45, _HUD_TEXT, 1, cv2.LINE_AA)
+    def draw_tripwire(self, frame: np.ndarray,
+                      tripwire: tuple[tuple[int, int], tuple[int, int]],
+                      counts: dict[str, int]) -> np.ndarray:
+        p1, p2 = tripwire
+        cv2.line(frame, p1, p2, (0, 255, 255), 2, cv2.LINE_AA)
+        cv2.circle(frame, p1, 4, (0, 255, 255), -1)
+        cv2.circle(frame, p2, 4, (0, 255, 255), -1)
+
+        total = sum(counts.values())
+        label = f"LINE CROSSES: {total}"
+        (lw, lh), _ = cv2.getTextSize(label, _FONT_SMALL, 0.5, 1)
+
+        y_pos = min(p1[1], p2[1]) - 10
+        x_pos = (p1[0] + p2[0]) // 2 - lw // 2
+
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (x_pos - 5, y_pos - lh - 5), (x_pos + lw + 5, y_pos + 5), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
+        cv2.putText(frame, label, (x_pos, y_pos), _FONT_SMALL, 0.5, (0, 255, 255), 1, cv2.LINE_AA)
+
+        return frame
