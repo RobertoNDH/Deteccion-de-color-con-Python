@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+
 import cv2
 import numpy as np
 
@@ -8,8 +9,9 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from src.config_manager import ConfigManager, ConfigError
 from src.camera import Camera, CameraError
+from src.config_manager import ConfigError, ConfigManager
+from src.detector import ColorDetector
 
 _WIN_CTRL   = "Calibrator - Controls"
 _WIN_RESULT = "Calibrator - Preview"
@@ -71,11 +73,9 @@ def _apply_mask(hsv: np.ndarray,
                 lower: list, upper: list) -> tuple[np.ndarray, np.ndarray]:
     lo = np.array(lower, dtype=np.uint8)
     hi = np.array(upper, dtype=np.uint8)
-    kernel_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     mask = cv2.inRange(hsv, lo, hi)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  kernel_open)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  ColorDetector._MORPH_KERNEL_OPEN)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, ColorDetector._MORPH_KERNEL_CLOSE)
     return mask, mask
 
 
@@ -242,125 +242,5 @@ if __name__ == "__main__":
     main()
 
 
-# ------------------------------------------------------------------
-# Main calibration loop
-# ------------------------------------------------------------------
-
-def main():
-    args = _parse_args()
-
-    try:
-        config = ConfigManager(args.config)
-    except ConfigError as e:
-        print(f"[ERROR] {e}")
-        sys.exit(1)
-
-    all_colors = config.colors
-    color_list = list(all_colors.keys())
-    if not color_list:
-        print("[ERROR] No colors defined in config.")
-        sys.exit(1)
-
-    current_color = args.color if args.color in color_list else color_list[0]
-
-    # Resolve source
-    source: str | int = 0
-    if args.source is not None:
-        try:
-            source = int(args.source)
-        except ValueError:
-            source = args.source
-
-    try:
-        cam = Camera(source, config.frame_width, config.frame_height)
-        cam.open()
-    except CameraError as e:
-        print(f"[ERROR] {e}")
-        sys.exit(1)
-
-    # Create control window with trackbars
-    cv2.namedWindow(_WIN_CTRL, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(_WIN_CTRL, 400, 250)
-    cfg0 = all_colors[current_color]
-    _create_trackbars(_WIN_CTRL, cfg0.get("lower", [0, 0, 0]),
-                      cfg0.get("upper", [179, 255, 255]))
-
-    # Preview window + mouse callback
-    cv2.namedWindow(_WIN_RESULT, cv2.WINDOW_NORMAL)
-    picker = _ClickPicker()
-    cv2.setMouseCallback(_WIN_RESULT, picker.callback)
-
-    saved_flash = 0   # countdown frames to show "Saved!" message
-    last_frame: np.ndarray | None = None
-
-    print("[INFO] Calibrator started.")
-    print(f"[INFO] Current color: {current_color}")
-    print("[INFO] Press 'c' to cycle colors, 'w' to save, 'q'/'ESC' to quit.")
-
-    while True:
-        key = cv2.waitKey(1) & 0xFF
-
-        # --- Quit ---
-        if key in (ord("q"), 27):
-            break
-
-        # --- Cycle colors ---
-        if key == ord("c"):
-            idx = color_list.index(current_color)
-            current_color = color_list[(idx + 1) % len(color_list)]
-            cfg = all_colors[current_color]
-            _set_trackbars(_WIN_CTRL, cfg.get("lower", [0, 0, 0]),
-                           cfg.get("upper", [179, 255, 255]))
-            picker.picked = False
-            print(f"[INFO] Switched to color: {current_color}")
-
-        # --- Save ---
-        if key == ord("w"):
-            lower, upper = _read_trackbars(_WIN_CTRL)
-            config.update_color(current_color, lower, upper)
-            all_colors = config.colors          # refresh local copy
-            saved_flash = 60
-            print(f"[SAVE] {current_color}  lower={lower}  upper={upper}")
-
-        # --- Read frame ---
-        frame = cam.read()
-        if frame is None:
-            if cam.is_image and last_frame is not None:
-                frame = last_frame.copy()
-            else:
-                break
-
-        last_frame = frame.copy()
-
-        # If user clicked a pixel, update trackbars
-        if picker.picked:
-            _set_trackbars(_WIN_CTRL, picker.lower, picker.upper)
-            picker.picked = False
-
-        # --- Build mask ---
-        blurred = cv2.GaussianBlur(frame, (config.blur_kernel_size,
-                                           config.blur_kernel_size), 0)
-        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-        picker.hsv_frame = hsv  # give picker access to current HSV frame
-
-        lower, upper = _read_trackbars(_WIN_CTRL)
-        mask, _ = _apply_mask(hsv, lower, upper)
-        result = cv2.bitwise_and(frame, frame, mask=mask)
-
-        # --- Build side-by-side: original | mask (3ch) | result ---
-        mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        preview  = np.hstack([frame, mask_3ch, result])
-
-        _overlay_instructions(preview, current_color, color_list,
-                               saved=saved_flash > 0)
-        if saved_flash > 0:
-            saved_flash -= 1
-
-        cv2.imshow(_WIN_RESULT, preview)
-
-    cam.release()
-    cv2.destroyAllWindows()
 
 
-if __name__ == "__main__":
-    main()

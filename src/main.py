@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import time
+
 import cv2
 import numpy as np
 
@@ -9,8 +10,8 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from src.config_manager import ConfigManager, ConfigError
 from src.camera import Camera, CameraError
+from src.config_manager import ConfigError, ConfigManager
 from src.detector import ColorDetector
 from src.tracker import ObjectTracker
 from src.visualizer import Visualizer
@@ -39,6 +40,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--min-area", type=int, default=None,
     )
+    parser.add_argument(
+        "--tripwire", default=None,
+        help="Line coordinates as x1,y1,x2,y2"
+    )
+    parser.add_argument(
+        "--output", default=None,
+        help="Path to CSV output file"
+    )
     return parser.parse_args()
 
 
@@ -48,6 +57,30 @@ def _save_screenshot(frame: np.ndarray):
     path = os.path.join("screenshots", f"screenshot_{ts}.jpg")
     cv2.imwrite(path, frame)
     print(f"[INFO] Screenshot saved: {path}")
+
+
+def _save_history(history, path):
+    import csv
+    if not history:
+        return
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["timestamp", "id", "color", "x", "y", "action"])
+        for h in history:
+            writer.writerow([h.timestamp, h.object_id, h.color_name, h.centroid[0], h.centroid[1], h.action])
+    print(f"[INFO] Analytics saved: {path}")
+
+
+_drawing_state = {"points": [], "tripwire": None}
+
+def _mouse_callback(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        _drawing_state["points"] = [(x, y)]
+    elif event == cv2.EVENT_LBUTTONUP:
+        if _drawing_state["points"]:
+            _drawing_state["tripwire"] = (_drawing_state["points"][0], (x, y))
+            _drawing_state["points"] = []
 
 
 def main():
@@ -87,6 +120,15 @@ def main():
                      config.tracker_max_distance,
                      config.trajectory_max_length,
                  )
+
+    if args.tripwire:
+        try:
+            coords = [int(i) for i in args.tripwire.split(",")]
+            tracker.set_tripwire((coords[0], coords[1]), (coords[2], coords[3]))
+            _drawing_state["tripwire"] = tracker.tripwire
+        except Exception as e:
+            print(f"[WARNING] Invalid tripwire format: {e}")
+
     visualizer = Visualizer()
 
     show_mask      = args.show_mask
@@ -103,6 +145,9 @@ def main():
         sys.exit(1)
 
     cv2.namedWindow("ColorTracker", cv2.WINDOW_NORMAL)
+    cv2.setMouseCallback("ColorTracker", _mouse_callback)
+
+    start_time = time.time()
     last_frame: np.ndarray | None = None
     paused_frame: np.ndarray | None = None
 
@@ -137,10 +182,14 @@ def main():
                     continue
                 break
 
+            ts = time.time() - start_time
             detections, hsv = detector.detect(frame)
 
             if tracking_on:
-                tracked = tracker.update(detections)
+                if tracker.tripwire != _drawing_state["tripwire"]:
+                    if _drawing_state["tripwire"]:
+                        tracker.set_tripwire(*_drawing_state["tripwire"])
+                tracked = tracker.update(detections, ts)
             else:
                 from src.tracker import TrackedObject
                 tracked = []
@@ -150,6 +199,9 @@ def main():
 
             out = frame.copy()
             visualizer.draw(out, tracked, show_trajectory=show_traj)
+
+            if tracking_on and tracker.tripwire:
+                visualizer.draw_tripwire(out, tracker.tripwire, tracker.line_counts)
 
             counts = (
                 tracker.counts_by_color()
@@ -162,13 +214,8 @@ def main():
                                  source_name=source_name)
 
             if show_mask:
-                blurred = cv2.GaussianBlur(
-                    frame,
-                    (config.blur_kernel_size, config.blur_kernel_size), 0
-                )
-                hsv_clean = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
                 masks = {
-                    name: detector.get_combined_mask(hsv_clean, name)
+                    name: detector.get_combined_mask(hsv, name)
                     for name in active_colors
                 }
                 masks = {k: v for k, v in masks.items() if v is not None}
@@ -178,8 +225,14 @@ def main():
             last_frame = out
 
     finally:
+        if args.output:
+            _save_history(tracker.history, args.output)
         cam.release()
         cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
