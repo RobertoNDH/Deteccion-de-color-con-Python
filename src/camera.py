@@ -85,12 +85,14 @@ class Camera:
             raise CameraError("Camera not opened. Call open() first.")
 
         if self._is_image:
+            if self._static_frame is None:
+                return None
             return self._static_frame.copy()
 
         with self._lock:
-            if not self._ret:
+            if not self._ret or self._frame is None:
                 return None
-            return self._frame.copy() if self._frame is not None else None
+            return self._frame.copy()
 
     def release(self):
         self._stopped = True

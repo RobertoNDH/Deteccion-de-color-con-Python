@@ -64,13 +64,13 @@ class ColorDetector:
                 if centroid is None:
                     continue
 
-                bbox = cv2.boundingRect(cnt)
+                x, y, w, h = cv2.boundingRect(cnt)
                 detections.append(Detection(
                     color_name=color_name,
                     display_color=display_color,
                     contour=cnt,
                     centroid=centroid,
-                    bbox=bbox,
+                    bbox=(int(x), int(y), int(w), int(h)),
                     area=area,
                     mask=mask,
                 ))

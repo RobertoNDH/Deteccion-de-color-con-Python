@@ -72,9 +72,11 @@ def _save_history(history, path):
     print(f"[INFO] Analytics saved: {path}")
 
 
-_drawing_state = {"points": [], "tripwire": None}
+from typing import Any
 
-def _mouse_callback(event, x, y, flags, param):
+_drawing_state: dict[str, Any] = {"points": [], "tripwire": None}
+
+def _mouse_callback(event: int, x: int, y: int, flags: int, param: Any) -> None:
     if event == cv2.EVENT_LBUTTONDOWN:
         _drawing_state["points"] = [(x, y)]
     elif event == cv2.EVENT_LBUTTONUP:
@@ -83,7 +85,7 @@ def _mouse_callback(event, x, y, flags, param):
             _drawing_state["points"] = []
 
 
-def main():
+def main() -> None:
     args = _parse_args()
 
     try:
@@ -214,12 +216,12 @@ def main():
                                  source_name=source_name)
 
             if show_mask:
-                masks = {
-                    name: detector.get_combined_mask(hsv, name)
+                raw_masks = {
+                    str(name): detector.get_combined_mask(hsv, name)
                     for name in active_colors
                 }
-                masks = {k: v for k, v in masks.items() if v is not None}
-                visualizer.show_masks(masks)
+                valid_masks = {k: v for k, v in raw_masks.items() if v is not None}
+                visualizer.show_masks(valid_masks)
 
             cv2.imshow("ColorTracker", out)
             last_frame = out
