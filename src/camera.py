@@ -1,6 +1,9 @@
-import cv2
 import os
+import threading
+import time
 from typing import Optional
+
+import cv2
 
 
 class CameraError(Exception):
@@ -22,6 +25,12 @@ class Camera:
         self._cap: Optional[cv2.VideoCapture] = None
         self._total_frames: int = 0
         self._opened = False
+
+        self._frame: Optional[cv2.typing.MatLike] = None
+        self._ret = False
+        self._stopped = False
+        self._thread: Optional[threading.Thread] = None
+        self._lock = threading.Lock()
 
     def __enter__(self) -> "Camera":
         self.open()
@@ -54,6 +63,23 @@ class Camera:
         self._total_frames = int(self._cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self._opened = True
 
+        self._ret, self._frame = self._cap.read()
+        self._stopped = False
+        self._thread = threading.Thread(target=self._update, daemon=True)
+        self._thread.start()
+
+    def _update(self):
+        while not self._stopped:
+            if self._cap is None:
+                break
+            ret, frame = self._cap.read()
+            with self._lock:
+                self._ret = ret
+                self._frame = frame
+            if not ret:
+                self._stopped = True
+            time.sleep(0.001)
+
     def read(self) -> Optional[cv2.typing.MatLike]:
         if not self._opened:
             raise CameraError("Camera not opened. Call open() first.")
@@ -61,12 +87,17 @@ class Camera:
         if self._is_image:
             return self._static_frame.copy()
 
-        ret, frame = self._cap.read()
-        if not ret:
-            return None
-        return frame
+        with self._lock:
+            if not self._ret:
+                return None
+            return self._frame.copy() if self._frame is not None else None
 
     def release(self):
+        self._stopped = True
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+
         if self._cap is not None:
             self._cap.release()
             self._cap = None
