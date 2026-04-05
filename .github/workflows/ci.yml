@@ -28,6 +28,10 @@ jobs:
       run: |
         pytest tests/ -v
         
+    - name: Check Formatting (Ruff)
+      run: |
+        ruff format --check .
+        
     - name: Check Linting (Ruff)
       run: |
         ruff check .
@@ -35,3 +39,11 @@ jobs:
     - name: Check Types (Mypy)
       run: |
         mypy src/ tests/ --ignore-missing-imports
+        
+    - name: Security Analysis (Bandit)
+      run: |
+        bandit -r src/
+        
+    - name: Dependency Audit (pip-audit)
+      run: |
+        pip-audit -r requirements.txt
