@@ -60,8 +60,9 @@ class ConfigManager:
             return all_colors
         return {k: v for k, v in all_colors.items() if k in filter_names}
 
-    def update_color(self, color_name: str, lower: list, upper: list,
-                     lower2: list | None = None, upper2: list | None = None):
+    def update_color(
+        self, color_name: str, lower: list, upper: list, lower2: list | None = None, upper2: list | None = None
+    ):
         self._validate_hsv_range(lower, upper, color_name)
         entry = self._data["colors"].setdefault(color_name, {})
         entry["lower"] = lower
@@ -93,28 +94,18 @@ class ConfigManager:
         for name, cfg in self._data["colors"].items():
             for key in ("lower", "upper", "display_color"):
                 if key not in cfg:
-                    raise ConfigError(
-                        f"Color '{name}' is missing required key '{key}'."
-                    )
+                    raise ConfigError(f"Color '{name}' is missing required key '{key}'.")
             self._validate_hsv_range(cfg["lower"], cfg["upper"], name)
             if cfg.get("dual_range"):
                 if "lower2" not in cfg or "upper2" not in cfg:
-                    raise ConfigError(
-                        f"Color '{name}' has dual_range=true but is missing "
-                        "'lower2' or 'upper2'."
-                    )
-                self._validate_hsv_range(cfg["lower2"], cfg["upper2"],
-                                         f"{name}_2")
+                    raise ConfigError(f"Color '{name}' has dual_range=true but is missing 'lower2' or 'upper2'.")
+                self._validate_hsv_range(cfg["lower2"], cfg["upper2"], f"{name}_2")
 
     @staticmethod
     def _validate_hsv_range(lower: list, upper: list, name: str):
         bounds = [("H", 0, 179), ("S", 0, 255), ("V", 0, 255)]
         for (ch, lo, hi), lv, uv in zip(bounds, lower, upper):
             if not (lo <= lv <= hi):
-                raise ConfigError(
-                    f"Color '{name}': lower {ch}={lv} out of range [{lo}, {hi}]"
-                )
+                raise ConfigError(f"Color '{name}': lower {ch}={lv} out of range [{lo}, {hi}]")
             if not (lo <= uv <= hi):
-                raise ConfigError(
-                    f"Color '{name}': upper {ch}={uv} out of range [{lo}, {hi}]"
-                )
+                raise ConfigError(f"Color '{name}': upper {ch}={uv} out of range [{lo}, {hi}]")

@@ -11,8 +11,7 @@ def _blank(h=480, w=640) -> np.ndarray:
     return np.zeros((h, w, 3), dtype=np.uint8)
 
 
-def _frame_with_color(bgr: tuple, rect=(200, 150, 240, 200),
-                       h=480, w=640) -> np.ndarray:
+def _frame_with_color(bgr: tuple, rect=(200, 150, 240, 200), h=480, w=640) -> np.ndarray:
     frame = _blank(h, w)
     x1, y1, x2, y2 = rect
     frame[y1:y2, x1:x2] = bgr
@@ -131,5 +130,5 @@ class TestMultiColorDetection:
         frame[100:250, 400:550] = (0, 200, 0)
         detections, _ = detector.detect(frame)
         color_names = {d.color_name for d in detections}
-        assert "blue"  in color_names
+        assert "blue" in color_names
         assert "green" in color_names

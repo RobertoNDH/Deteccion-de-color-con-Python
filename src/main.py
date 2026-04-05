@@ -23,31 +23,32 @@ def _parse_args() -> argparse.Namespace:
         description="Real-time color detection and tracking engine.",
     )
     parser.add_argument(
-        "--source", default=None,
+        "--source",
+        default=None,
     )
     parser.add_argument(
-        "--config", default="config.json",
+        "--config",
+        default="config.json",
     )
     parser.add_argument(
-        "--colors", default=None,
+        "--colors",
+        default=None,
     )
     parser.add_argument(
-        "--no-track", action="store_true",
+        "--no-track",
+        action="store_true",
     )
     parser.add_argument(
-        "--show-mask", action="store_true",
+        "--show-mask",
+        action="store_true",
     )
     parser.add_argument(
-        "--min-area", type=int, default=None,
+        "--min-area",
+        type=int,
+        default=None,
     )
-    parser.add_argument(
-        "--tripwire", default=None,
-        help="Line coordinates as x1,y1,x2,y2"
-    )
-    parser.add_argument(
-        "--output", default=None,
-        help="Path to CSV output file"
-    )
+    parser.add_argument("--tripwire", default=None, help="Line coordinates as x1,y1,x2,y2")
+    parser.add_argument("--output", default=None, help="Path to CSV output file")
     return parser.parse_args()
 
 
@@ -61,6 +62,7 @@ def _save_screenshot(frame: np.ndarray):
 
 def _save_history(history, path):
     import csv
+
     if not history:
         return
     os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
@@ -75,6 +77,7 @@ def _save_history(history, path):
 from typing import Any
 
 _drawing_state: dict[str, Any] = {"points": [], "tripwire": None}
+
 
 def _mouse_callback(event: int, x: int, y: int, flags: int, param: Any) -> None:
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -101,10 +104,7 @@ def main() -> None:
         except ValueError:
             source = args.source
 
-    color_filter = (
-        [c.strip() for c in args.colors.split(",")]
-        if args.colors else None
-    )
+    color_filter = [c.strip() for c in args.colors.split(",")] if args.colors else None
     active_colors = config.get_active_colors(color_filter)
     if not active_colors:
         print(f"[ERROR] No colors match the filter: {args.colors}")
@@ -116,12 +116,12 @@ def main() -> None:
     print(f"[INFO] Colors: {list(active_colors.keys())}")
     print(f"[INFO] Min area: {min_area}")
 
-    detector   = ColorDetector(active_colors, min_area, config.blur_kernel_size)
-    tracker    = ObjectTracker(
-                     config.tracker_max_disappeared,
-                     config.tracker_max_distance,
-                     config.trajectory_max_length,
-                 )
+    detector = ColorDetector(active_colors, min_area, config.blur_kernel_size)
+    tracker = ObjectTracker(
+        config.tracker_max_disappeared,
+        config.tracker_max_distance,
+        config.trajectory_max_length,
+    )
 
     if args.tripwire:
         try:
@@ -133,11 +133,11 @@ def main() -> None:
 
     visualizer = Visualizer()
 
-    show_mask      = args.show_mask
-    show_traj      = True
-    paused         = False
-    tracking_on    = not args.no_track
-    source_name    = os.path.basename(str(source)) if isinstance(source, str) else f"cam:{source}"
+    show_mask = args.show_mask
+    show_traj = True
+    paused = False
+    tracking_on = not args.no_track
+    source_name = os.path.basename(str(source)) if isinstance(source, str) else f"cam:{source}"
 
     try:
         cam = Camera(source, config.frame_width, config.frame_height)
@@ -194,6 +194,7 @@ def main() -> None:
                 tracked = tracker.update(detections, ts)
             else:
                 from src.tracker import TrackedObject
+
                 tracked = []
                 for i, det in enumerate(detections):
                     obj = TrackedObject(i, det, config.trajectory_max_length)
@@ -208,18 +209,12 @@ def main() -> None:
             counts = (
                 tracker.counts_by_color()
                 if tracking_on
-                else {d.color_name: sum(1 for x in detections if x.color_name == d.color_name)
-                      for d in detections}
+                else {d.color_name: sum(1 for x in detections if x.color_name == d.color_name) for d in detections}
             )
-            visualizer.draw_hud(out, counts,
-                                 paused=paused,
-                                 source_name=source_name)
+            visualizer.draw_hud(out, counts, paused=paused, source_name=source_name)
 
             if show_mask:
-                raw_masks = {
-                    str(name): detector.get_combined_mask(hsv, name)
-                    for name in active_colors
-                }
+                raw_masks = {str(name): detector.get_combined_mask(hsv, name) for name in active_colors}
                 valid_masks = {k: v for k, v in raw_masks.items() if v is not None}
                 visualizer.show_masks(valid_masks)
 
@@ -231,10 +226,6 @@ def main() -> None:
             _save_history(tracker.history, args.output)
         cam.release()
         cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":

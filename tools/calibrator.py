@@ -13,7 +13,7 @@ from src.camera import Camera, CameraError
 from src.config_manager import ConfigError, ConfigManager
 from src.detector import ColorDetector
 
-_WIN_CTRL   = "Calibrator - Controls"
+_WIN_CTRL = "Calibrator - Controls"
 _WIN_RESULT = "Calibrator - Preview"
 
 _TB = {
@@ -69,18 +69,16 @@ def _set_trackbars(window: str, lower: list, upper: list):
     cv2.setTrackbarPos(_TB["U_V"], window, upper[2])
 
 
-def _apply_mask(hsv: np.ndarray,
-                lower: list, upper: list) -> tuple[np.ndarray, np.ndarray]:
+def _apply_mask(hsv: np.ndarray, lower: list, upper: list) -> tuple[np.ndarray, np.ndarray]:
     lo = np.array(lower, dtype=np.uint8)
     hi = np.array(upper, dtype=np.uint8)
     mask = cv2.inRange(hsv, lo, hi)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  ColorDetector._MORPH_KERNEL_OPEN)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, ColorDetector._MORPH_KERNEL_OPEN)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, ColorDetector._MORPH_KERNEL_CLOSE)
     return mask, mask
 
 
-def _overlay_instructions(frame: np.ndarray, color_name: str,
-                            color_list: list[str], saved: bool):
+def _overlay_instructions(frame: np.ndarray, color_name: str, color_list: list[str], saved: bool):
     idx = color_list.index(color_name)
     lines = [
         f"Color: {color_name} ({idx + 1}/{len(color_list)})",
@@ -95,14 +93,12 @@ def _overlay_instructions(frame: np.ndarray, color_name: str,
     pad, lh = 8, 18
     h = len(lines) * lh + pad * 2
     overlay = frame.copy()
-    cv2.rectangle(overlay, (0, frame.shape[0] - h), (260, frame.shape[0]),
-                  (20, 20, 20), cv2.FILLED)
+    cv2.rectangle(overlay, (0, frame.shape[0] - h), (260, frame.shape[0]), (20, 20, 20), cv2.FILLED)
     cv2.addWeighted(overlay, 0.65, frame, 0.35, 0, frame)
     for i, line in enumerate(lines):
         y = frame.shape[0] - h + pad + (i + 1) * lh - 4
         color = (0, 255, 80) if ("Saved!" in line or "Color:" in line) else (200, 200, 200)
-        cv2.putText(frame, line, (pad, y),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1, cv2.LINE_AA)
+        cv2.putText(frame, line, (pad, y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1, cv2.LINE_AA)
 
 
 class _ClickPicker:
@@ -119,9 +115,9 @@ class _ClickPicker:
         margin_h = 15
         margin_sv = 60
         self.lower = [
-            max(0,   int(px_h) - margin_h),
-            max(0,   int(px_s) - margin_sv),
-            max(0,   int(px_v) - margin_sv),
+            max(0, int(px_h) - margin_h),
+            max(0, int(px_s) - margin_sv),
+            max(0, int(px_v) - margin_sv),
         ]
         self.upper = [
             min(179, int(px_h) + margin_h),
@@ -166,8 +162,7 @@ def main():
     cv2.namedWindow(_WIN_CTRL, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(_WIN_CTRL, 400, 250)
     cfg0 = all_colors[current_color]
-    _create_trackbars(_WIN_CTRL, cfg0.get("lower", [0, 0, 0]),
-                      cfg0.get("upper", [179, 255, 255]))
+    _create_trackbars(_WIN_CTRL, cfg0.get("lower", [0, 0, 0]), cfg0.get("upper", [179, 255, 255]))
 
     cv2.namedWindow(_WIN_RESULT, cv2.WINDOW_NORMAL)
     picker = _ClickPicker()
@@ -190,8 +185,7 @@ def main():
             idx = color_list.index(current_color)
             current_color = color_list[(idx + 1) % len(color_list)]
             cfg = all_colors[current_color]
-            _set_trackbars(_WIN_CTRL, cfg.get("lower", [0, 0, 0]),
-                           cfg.get("upper", [179, 255, 255]))
+            _set_trackbars(_WIN_CTRL, cfg.get("lower", [0, 0, 0]), cfg.get("upper", [179, 255, 255]))
             picker.picked = False
             print(f"[INFO] Switched to color: {current_color}")
 
@@ -215,8 +209,7 @@ def main():
             _set_trackbars(_WIN_CTRL, picker.lower, picker.upper)
             picker.picked = False
 
-        blurred = cv2.GaussianBlur(frame, (config.blur_kernel_size,
-                                           config.blur_kernel_size), 0)
+        blurred = cv2.GaussianBlur(frame, (config.blur_kernel_size, config.blur_kernel_size), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
         picker.hsv_frame = hsv
 
@@ -225,10 +218,9 @@ def main():
         result = cv2.bitwise_and(frame, frame, mask=mask)
 
         mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        preview  = np.hstack([frame, mask_3ch, result])
+        preview = np.hstack([frame, mask_3ch, result])
 
-        _overlay_instructions(preview, current_color, color_list,
-                               saved=saved_flash > 0)
+        _overlay_instructions(preview, current_color, color_list, saved=saved_flash > 0)
         if saved_flash > 0:
             saved_flash -= 1
 
@@ -240,7 +232,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-

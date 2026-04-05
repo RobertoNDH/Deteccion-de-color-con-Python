@@ -14,8 +14,7 @@ class TrackLog(NamedTuple):
 
 
 class TrackedObject:
-    def __init__(self, object_id: int, detection: Detection,
-                 max_trajectory: int = 50):
+    def __init__(self, object_id: int, detection: Detection, max_trajectory: int = 50):
         self.id = object_id
         self.color_name = detection.color_name
         self.display_color = detection.display_color
@@ -36,9 +35,7 @@ class TrackedObject:
 
 
 class ObjectTracker:
-    def __init__(self, max_disappeared: int = 30,
-                 max_distance: int = 80,
-                 max_trajectory: int = 50):
+    def __init__(self, max_disappeared: int = 30, max_distance: int = 80, max_trajectory: int = 50):
         self.max_disappeared = max_disappeared
         self.max_distance = max_distance
         self.max_trajectory = max_trajectory
@@ -86,10 +83,7 @@ class ObjectTracker:
         self._next_id += 1
 
     def _purge_disappeared(self):
-        to_remove = [
-            oid for oid, obj in self._objects.items()
-            if obj.disappeared > self.max_disappeared
-        ]
+        to_remove = [oid for oid, obj in self._objects.items() if obj.disappeared > self.max_disappeared]
         for oid in to_remove:
             del self._objects[oid]
 
@@ -98,19 +92,14 @@ class ObjectTracker:
         object_centroids = [self._objects[oid].centroid for oid in object_ids]
         det_centroids = [d.centroid for d in detections]
 
-        dist_matrix = [
-            [_euclidean(oc, dc) for dc in det_centroids]
-            for oc in object_centroids
-        ]
+        dist_matrix = [[_euclidean(oc, dc) for dc in det_centroids] for oc in object_centroids]
 
         matched_objects: set[int] = set()
         matched_detections: set[int] = set()
 
         flat = sorted(
-            [(dist_matrix[r][c], r, c)
-             for r in range(len(object_ids))
-             for c in range(len(detections))],
-            key=lambda x: x[0]
+            [(dist_matrix[r][c], r, c) for r in range(len(object_ids)) for c in range(len(detections))],
+            key=lambda x: x[0],
         )
 
         for dist, r, c in flat:
@@ -152,7 +141,7 @@ def _euclidean(a: tuple[int, int], b: tuple[int, int]) -> float:
 
 
 def _ccw(A, B, C):
-    return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
+    return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
 
 
 def _intersect(A, B, C, D):

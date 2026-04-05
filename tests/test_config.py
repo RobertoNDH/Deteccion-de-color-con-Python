@@ -26,7 +26,7 @@ def minimal_config(tmp_path) -> str:
                 "display_color": [255, 0, 0],
                 "dual_range": False,
             }
-        }
+        },
     }
     path = tmp_path / "config.json"
     path.write_text(json.dumps(cfg), encoding="utf-8")
@@ -38,8 +38,8 @@ def red_dual_config(tmp_path) -> str:
     cfg = {
         "colors": {
             "red": {
-                "lower":  [0,   120, 70],
-                "upper":  [10,  255, 255],
+                "lower": [0, 120, 70],
+                "upper": [10, 255, 255],
                 "lower2": [170, 120, 70],
                 "upper2": [180, 255, 255],
                 "display_color": [0, 0, 255],
@@ -155,7 +155,7 @@ class TestConfigManagerSave:
                     "display_color": [255, 0, 0],
                     "dual_range": False,
                 }
-            }
+            },
         }
         path = tmp_path / "config.json"
         path.write_text(json.dumps(cfg_data), encoding="utf-8")

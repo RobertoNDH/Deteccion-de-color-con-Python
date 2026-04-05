@@ -14,8 +14,7 @@ _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
 
 
 class Camera:
-    def __init__(self, source: str | int = 0,
-                 width: int = 640, height: int = 480):
+    def __init__(self, source: str | int = 0, width: int = 640, height: int = 480):
         self.source = source
         self.width = width
         self.height = height
@@ -43,21 +42,14 @@ class Camera:
         if self._is_image:
             self._static_frame = cv2.imread(str(self.source))
             if self._static_frame is None:
-                raise CameraError(
-                    f"Cannot read image: {self.source}"
-                )
-            self._static_frame = cv2.resize(
-                self._static_frame, (self.width, self.height)
-            )
+                raise CameraError(f"Cannot read image: {self.source}")
+            self._static_frame = cv2.resize(self._static_frame, (self.width, self.height))
             self._opened = True
             return
 
         self._cap = cv2.VideoCapture(self.source)
         if not self._cap.isOpened():
-            raise CameraError(
-                f"Cannot open video source: {self.source!r}. "
-                "Check the path or camera index."
-            )
+            raise CameraError(f"Cannot open video source: {self.source!r}. Check the path or camera index.")
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self._total_frames = int(self._cap.get(cv2.CAP_PROP_FRAME_COUNT))
